@@ -1,8 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Image, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Image, ScrollView, Text, View, useWindowDimensions, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ const Container = styled.View`
 `;
 
 const Header = styled(LinearGradient).attrs({
-  colors: ['#3A8DFF', '#00D4FF'],
+  colors: ['#264a7c', '#00D4FF'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 },
 })`
@@ -32,19 +32,7 @@ const Header = styled(LinearGradient).attrs({
 const HeaderRow = styled.View`
   flex-direction: row;
   align-items: center;
-  margin-top: -40px;
-`;
-
-const Title = styled.Text`
-  color: #F5F8FF;
-  font-weight: 700;
-  font-size: 30px;
-`;
-
-const Subtitle = styled.Text`
-  color: rgba(245, 248, 255, 0.8);
-  font-weight: 400;
-  margin-top: 4px;
+  margin-top: ${Platform.OS === 'web' ? '0px' : '-40px'};
 `;
 
 const AnimatedSection = styled(Animated.View)`
@@ -55,7 +43,7 @@ const MainRow = styled.View`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-top: -50px;
+  margin-top: ${Platform.OS === 'web' ? '0px' : '-50px'};
 `;
 
 const CityName = styled.Text`
@@ -191,6 +179,41 @@ export default function App() {
   const apiKey = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
   const hasKey = !!apiKey;
 
+  // Animations: Header slide down on mount, then reveal content with fade
+  const headerTranslateY = useSharedValue(-100);
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(12);
+  const iconOpacity = useSharedValue(0);
+  const iconTranslateY = useSharedValue(-20);
+  const hoursOpacity = useSharedValue(0);
+  const hoursTranslateY = useSharedValue(12);
+  const daysOpacity = useSharedValue(0);
+  const daysTranslateY = useSharedValue(12);
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: iconOpacity.value,
+    transform: [{ translateY: iconTranslateY.value }],
+  }));
+
+  const hoursAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: hoursOpacity.value,
+    transform: [{ translateY: hoursTranslateY.value }],
+  }));
+
+  const daysAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: daysOpacity.value,
+    transform: [{ translateY: daysTranslateY.value }],
+  }));
+
   async function fetchWeather() {
     if (!city) return;
     setLoading(true);
@@ -241,6 +264,27 @@ export default function App() {
     fetchWeatherByLocation().catch(() => {});
   }, [hasKey]);
 
+  // Trigger header slide and content fade on mount (slower)
+  useEffect(() => {
+    headerTranslateY.value = withTiming(0, { duration: 1200, easing: Easing.out(Easing.cubic) }, (finished) => {
+      if (finished) {
+        // Icon fade + slide
+        iconOpacity.value = withTiming(1, { duration: 800 });
+        iconTranslateY.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) });
+
+        // Content fade + slide
+        contentOpacity.value = withTiming(1, { duration: 900 });
+        contentTranslateY.value = withTiming(0, { duration: 900, easing: Easing.out(Easing.cubic) });
+
+        // Sections
+        hoursOpacity.value = withTiming(1, { duration: 950 });
+        hoursTranslateY.value = withTiming(0, { duration: 950, easing: Easing.out(Easing.cubic) });
+        daysOpacity.value = withTiming(1, { duration: 1000 });
+        daysTranslateY.value = withTiming(0, { duration: 1000, easing: Easing.out(Easing.cubic) });
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (fontsLoaded) {
       const anyText: any = Text as any;
@@ -271,96 +315,107 @@ export default function App() {
 
   return (
     <Container>
-      <Header>
-        <HeaderRow>
-          <Image source={require('./assets/icon.png')} resizeMode="contain" style={{ width: logoSize, height: logoSize, marginRight: 12 }} />
-        </HeaderRow>
-        {data && (
-          <AnimatedSection entering={FadeIn}>
-            <MainRow>
-              <View>
-                <CityName>{data.name}</CityName>
-                <CurrentTemp>{Math.round(data.main.temp)}°</CurrentTemp>
-                <CurrentDesc>{data.weather[0].description}</CurrentDesc>
-              </View>
-              <MaterialCommunityIcons name={currentIcon as any} size={mainIconSize} color="#00D4FF" />
-            </MainRow>
-            <Metrics>
-              <MetricItem>
-                <Label>Vento</Label>
-                <Value>{Math.round((data.wind?.speed ?? 0) * 3.6)} km/h</Value>
-              </MetricItem>
-              <MetricItem>
-                <Label>Umidade</Label>
-                <Value>{data.main.humidity}%</Value>
-              </MetricItem>
-              <MetricItem>
-                <Label>Chuva</Label>
-                <Value>{Math.round((nextHours[0]?.pop ?? 0) * 100)}%</Value>
-              </MetricItem>
-            </Metrics>
-          </AnimatedSection>
-        )}
-      </Header>
+      <Animated.View style={headerAnimatedStyle}>
+        <Header>
+          <HeaderRow>
+            <Image source={require('./assets/icon.png')} resizeMode="contain" style={{ width: logoSize, height: logoSize, marginRight: 12 }} />
+          </HeaderRow>
+          {data && (
+            <AnimatedSection entering={FadeIn}>
+              <MainRow>
+                <View>
+                  <CityName>{data.name}</CityName>
+                  <CurrentTemp>{Math.round(data.main.temp)}°</CurrentTemp>
+                  <CurrentDesc>{data.weather[0].description}</CurrentDesc>
+                </View>
+              <Animated.View style={iconAnimatedStyle}>
+                <MaterialCommunityIcons name={currentIcon as any} size={mainIconSize} color="#00D4FF" />
+              </Animated.View>
+              </MainRow>
+              <Metrics>
+                <MetricItem>
+                  <Label>Vento</Label>
+                  <Value>{Math.round((data.wind?.speed ?? 0) * 3.6)} km/h</Value>
+                </MetricItem>
+                <MetricItem>
+                  <Label>Umidade</Label>
+                  <Value>{data.main.humidity}%</Value>
+                </MetricItem>
+                <MetricItem>
+                  <Label>Chuva</Label>
+                  <Value>{Math.round((nextHours[0]?.pop ?? 0) * 100)}%</Value>
+                </MetricItem>
+              </Metrics>
+            </AnimatedSection>
+          )}
+        </Header>
+      </Animated.View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 }}>
-        {!hasKey && (
-          <Banner>
-            <LabelLight>Defina EXPO_PUBLIC_OPENWEATHER_API_KEY para habilitar a busca.</LabelLight>
-          </Banner>
-        )}
-        <Section>
-          <SectionTitle>Próximas horas</SectionTitle>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {nextHours.map((it, idx) => {
-              const hour = new Date(it.dt * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      <Animated.ScrollView
+        style={[contentAnimatedStyle, { flex: 1 }]}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 }}
+      >
+          {!hasKey && (
+            <Banner>
+              <LabelLight>Defina EXPO_PUBLIC_OPENWEATHER_API_KEY para habilitar a busca.</LabelLight>
+            </Banner>
+          )}
+          <Section>
+            <SectionTitle>Próximas horas</SectionTitle>
+          <Animated.View style={hoursAnimatedStyle}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {nextHours.map((it, idx) => {
+                const hour = new Date(it.dt * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const iname = iconNameFor(it.weather[0]);
+                return (
+                  <HourCard key={idx}>
+                    <MaterialCommunityIcons name={iname as any} size={40} color="#00D4FF" />
+                    <LabelLight style={{ marginTop: 4 }}>{Math.round(it.main.temp_max)}°</LabelLight>
+                    <LabelLight style={{ opacity: 0.8, fontSize: 12 }}>{hour}</LabelLight>
+                  </HourCard>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+          </Section>
+
+          <Section style={{ marginTop: 24 }}>
+            <SectionTitle>7 dias</SectionTitle>
+          <Animated.View style={daysAnimatedStyle}>
+            {forecast.filter((_, i) => i % 8 === 4).slice(0, 7).map((it, idx) => {
+              const day = new Date(it.dt * 1000).toLocaleDateString('pt-BR', { weekday: 'short' });
               const iname = iconNameFor(it.weather[0]);
               return (
-                <HourCard key={idx}>
-                  <MaterialCommunityIcons name={iname as any} size={40} color="#00D4FF" />
-                  <LabelLight style={{ marginTop: 4 }}>{Math.round(it.main.temp_max)}°</LabelLight>
-                  <LabelLight style={{ opacity: 0.8, fontSize: 12 }}>{hour}</LabelLight>
-                </HourCard>
+                <DayRow key={idx}>
+                  <LabelLight style={{ textTransform: 'capitalize' }}>{day}</LabelLight>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <MaterialCommunityIcons name={iname as any} size={28} color="#00D4FF" style={{ marginRight: 12 }} />
+                    <LabelLight>{Math.round(it.main.temp_max)}°/{Math.round(it.main.temp_min)}°</LabelLight>
+                  </View>
+                </DayRow>
               );
             })}
-          </ScrollView>
-        </Section>
+          </Animated.View>
+          </Section>
 
-        <Section style={{ marginTop: 24 }}>
-          <SectionTitle>7 dias</SectionTitle>
-          {forecast.filter((_, i) => i % 8 === 4).slice(0, 7).map((it, idx) => {
-            const day = new Date(it.dt * 1000).toLocaleDateString('pt-BR', { weekday: 'short' });
-            const iname = iconNameFor(it.weather[0]);
-            return (
-              <DayRow key={idx}>
-                <LabelLight style={{ textTransform: 'capitalize' }}>{day}</LabelLight>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialCommunityIcons name={iname as any} size={28} color="#00D4FF" style={{ marginRight: 12 }} />
-                  <LabelLight>{Math.round(it.main.temp_max)}°/{Math.round(it.main.temp_min)}°</LabelLight>
-                </View>
-              </DayRow>
-            );
-          })}
-        </Section>
+          <Section style={{ marginTop: 24 }}>
+            <InputLabel>Cidade</InputLabel>
+            <Input
+              value={city}
+              onChangeText={setCity}
+              placeholder="Digite o nome da cidade"
+              placeholderTextColor="#F5F8FF55"
+              returnKeyType="search"
+              onSubmitEditing={fetchWeather}
+            />
+            <Button onPress={fetchWeather} disabled={!hasKey} activeOpacity={0.8}>
+              <ButtonText>Buscar</ButtonText>
+            </Button>
+          </Section>
 
-        <Section style={{ marginTop: 24 }}>
-          <InputLabel>Cidade</InputLabel>
-          <Input
-            value={city}
-            onChangeText={setCity}
-            placeholder="Digite o nome da cidade"
-            placeholderTextColor="#F5F8FF55"
-            returnKeyType="search"
-            onSubmitEditing={fetchWeather}
-          />
-          <Button onPress={fetchWeather} disabled={!hasKey} activeOpacity={0.8}>
-            <ButtonText>Buscar</ButtonText>
-          </Button>
-        </Section>
-
-        {loading && <LoadingText>Carregando...</LoadingText>}
-        {error && <ErrorText>{error}</ErrorText>}
-      </ScrollView>
+          {loading && <LoadingText>Carregando...</LoadingText>}
+          {error && <ErrorText>{error}</ErrorText>}
+      </Animated.ScrollView>
       <StatusBar style="light" />
     </Container>
   );
