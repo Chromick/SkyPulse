@@ -6,12 +6,181 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import styled from 'styled-components/native';
 import { getForecastByCity, getForecastByCoords, getWeatherByCity, getWeatherByCoords, ForecastItem, WeatherResponse } from './lib/weatherApi';
+
+const Container = styled.View`
+  flex: 1;
+  background-color: #2E2E2E;
+`;
+
+const Header = styled(LinearGradient).attrs({
+  colors: ['#3A8DFF', '#00D4FF'],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 1 },
+})`
+  padding-top: 60px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-bottom: 24px;
+  border-bottom-left-radius: 32px;
+  border-bottom-right-radius: 32px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const HeaderRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-top: -40px;
+`;
+
+const Title = styled.Text`
+  color: #F5F8FF;
+  font-weight: 700;
+  font-size: 30px;
+`;
+
+const Subtitle = styled.Text`
+  color: rgba(245, 248, 255, 0.8);
+  font-weight: 400;
+  margin-top: 4px;
+`;
+
+const AnimatedSection = styled(Animated.View)`
+  margin-top: 24px;
+`;
+
+const MainRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -50px;
+`;
+
+const CityName = styled.Text`
+  color: #F5F8FF;
+  font-weight: 600;
+  font-size: 20px;
+`;
+
+const CurrentTemp = styled.Text`
+  color: #F5F8FF;
+  font-weight: 700;
+  font-size: 64px;
+`;
+
+const CurrentDesc = styled.Text`
+  color: #F5F8FF;
+  font-weight: 500;
+  margin-top: 4px;
+  text-transform: capitalize;
+`;
+
+const Metrics = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 24px;
+  flex-wrap: nowrap;
+`;
+
+const MetricItem = styled.View`
+  flex-direction: column;
+  align-items: center;
+`;
+
+const Label = styled.Text`
+  color: rgba(245, 248, 255, 0.8);
+  margin-bottom: 4px;
+`;
+
+const Value = styled.Text`
+  color: #F5F8FF;
+  font-weight: 600;
+`;
+
+const Banner = styled.View`
+  background-color: #1B2A41;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+`;
+
+const Section = styled.View`
+  margin-top: 8px;
+`;
+
+const SectionTitle = styled.Text`
+  color: #F5F8FF;
+  font-weight: 600;
+  margin-bottom: 12px;
+`;
+
+const HourCard = styled.View`
+  background-color: #1B2A41;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-right: 12px;
+  align-items: center;
+`;
+
+const DayRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #1B2A41;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+`;
+
+const LabelLight = styled.Text`
+  color: #F5F8FF;
+`;
+
+const InputLabel = styled.Text`
+  color: #F5F8FF;
+  margin-bottom: 8px;
+`;
+
+const Input = styled.TextInput`
+  border-width: 1px;
+  border-color: rgba(27, 42, 65, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  background-color: #1B2A41;
+  color: #F5F8FF;
+`;
+
+const Button = styled.TouchableOpacity<{ disabled?: boolean }>`
+  border-radius: 12px;
+  padding: 12px;
+  align-items: center;
+  margin-top: 16px;
+  background-color: ${(p) => (p.disabled ? '#1B2A41' : '#3A8DFF')};
+`;
+
+const ButtonText = styled.Text`
+  color: #F5F8FF;
+  font-weight: 600;
+`;
+
+const LoadingText = styled.Text`
+  margin-top: 24px;
+  color: #F5F8FF;
+`;
+
+const ErrorText = styled.Text`
+  margin-top: 24px;
+  color: #F5F8FF;
+`;
 
 
 export default function App() {
   const { width } = useWindowDimensions();
-  const logoSize = Math.min(128, Math.round(width * 0.2));
+  const logoSize = Math.min(192, Math.round(width * 0.3));
   const mainIconSize = Math.min(160, Math.round(width * 0.3));
   const [fontsLoaded] = useFonts({ Rubik: require('./Rubik-VariableFont_wght.ttf') });
   const [city, setCity] = useState('');
@@ -101,93 +270,98 @@ export default function App() {
   }
 
   return (
-    <View className="flex-1 bg-neutralLight">
-      <LinearGradient colors={["#3A8DFF", "#00D4FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingTop: 60, paddingHorizontal: 24, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }}>
-        <View className="flex-row items-center">
+    <Container>
+      <Header>
+        <HeaderRow>
           <Image source={require('./assets/icon.png')} resizeMode="contain" style={{ width: logoSize, height: logoSize, marginRight: 12 }} />
-          <Text className="text-3xl font-semibold text-white" style={{ fontWeight: '700' }}>SkyPulse</Text>
-        </View>
-        <Text className="text-white/80 mt-1" style={{ fontWeight: '400' }}>App de Previsão do Tempo</Text>
+        </HeaderRow>
         {data && (
-          <Animated.View entering={FadeIn} className="mt-6">
-            <View className="flex-row items-center justify-between">
+          <AnimatedSection entering={FadeIn}>
+            <MainRow>
               <View>
-                <Text className="text-white text-xl" style={{ fontWeight: '600' }}>{data.name}</Text>
-                <Text className="text-white text-6xl font-bold" style={{ fontWeight: '700' }}>{Math.round(data.main.temp)}°</Text>
-                <Text className="text-white mt-1 capitalize" style={{ fontWeight: '500' }}>{data.weather[0].description}</Text>
+                <CityName>{data.name}</CityName>
+                <CurrentTemp>{Math.round(data.main.temp)}°</CurrentTemp>
+                <CurrentDesc>{data.weather[0].description}</CurrentDesc>
               </View>
               <MaterialCommunityIcons name={currentIcon as any} size={mainIconSize} color="#00D4FF" />
-            </View>
-            <View className="flex-row gap-6 mt-6">
-              <View className="items-center">
-                <Text className="text-white/80">Vento</Text>
-                <Text className="text-white font-semibold">{Math.round((data.wind?.speed ?? 0) * 3.6)} km/h</Text>
-              </View>
-              <View className="items-center">
-                <Text className="text-white/80">Umidade</Text>
-                <Text className="text-white font-semibold">{data.main.humidity}%</Text>
-              </View>
-              <View className="items-center">
-                <Text className="text-white/80">Chuva</Text>
-                <Text className="text-white font-semibold">{Math.round((nextHours[0]?.pop ?? 0) * 100)}%</Text>
-              </View>
-            </View>
-          </Animated.View>
+            </MainRow>
+            <Metrics>
+              <MetricItem>
+                <Label>Vento</Label>
+                <Value>{Math.round((data.wind?.speed ?? 0) * 3.6)} km/h</Value>
+              </MetricItem>
+              <MetricItem>
+                <Label>Umidade</Label>
+                <Value>{data.main.humidity}%</Value>
+              </MetricItem>
+              <MetricItem>
+                <Label>Chuva</Label>
+                <Value>{Math.round((nextHours[0]?.pop ?? 0) * 100)}%</Value>
+              </MetricItem>
+            </Metrics>
+          </AnimatedSection>
         )}
-      </LinearGradient>
+      </Header>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 }}>
         {!hasKey && (
-          <View className="mb-3 bg-secondary rounded-2xl px-4 py-3">
-            <Text className="text-white">Defina EXPO_PUBLIC_OPENWEATHER_API_KEY para habilitar a busca.</Text>
-          </View>
+          <Banner>
+            <LabelLight>Defina EXPO_PUBLIC_OPENWEATHER_API_KEY para habilitar a busca.</LabelLight>
+          </Banner>
         )}
-        <View className="mt-2">
-          <Text className="text-secondary mb-3" style={{ fontWeight: '600' }}>Próximas horas</Text>
+        <Section>
+          <SectionTitle>Próximas horas</SectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {nextHours.map((it, idx) => {
               const hour = new Date(it.dt * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
               const iname = iconNameFor(it.weather[0]);
               return (
-                <View key={idx} className="mr-3 bg-secondary rounded-2xl px-4 py-3 items-center">
+                <HourCard key={idx}>
                   <MaterialCommunityIcons name={iname as any} size={40} color="#00D4FF" />
-                  <Text className="text-white mt-1">{Math.round(it.main.temp_max)}°</Text>
-                  <Text className="text-white/80 text-xs">{hour}</Text>
-                </View>
+                  <LabelLight style={{ marginTop: 4 }}>{Math.round(it.main.temp_max)}°</LabelLight>
+                  <LabelLight style={{ opacity: 0.8, fontSize: 12 }}>{hour}</LabelLight>
+                </HourCard>
               );
             })}
           </ScrollView>
-        </View>
+        </Section>
 
-        <View className="mt-6">
-          <Text className="text-secondary mb-3" style={{ fontWeight: '600' }}>7 dias</Text>
+        <Section style={{ marginTop: 24 }}>
+          <SectionTitle>7 dias</SectionTitle>
           {forecast.filter((_, i) => i % 8 === 4).slice(0, 7).map((it, idx) => {
             const day = new Date(it.dt * 1000).toLocaleDateString('pt-BR', { weekday: 'short' });
             const iname = iconNameFor(it.weather[0]);
             return (
-              <View key={idx} className="flex-row items-center justify-between bg-secondary rounded-2xl px-4 py-3 mb-2">
-                <Text className="text-white capitalize">{day}</Text>
-                <View className="flex-row items-center">
+              <DayRow key={idx}>
+                <LabelLight style={{ textTransform: 'capitalize' }}>{day}</LabelLight>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <MaterialCommunityIcons name={iname as any} size={28} color="#00D4FF" style={{ marginRight: 12 }} />
-                  <Text className="text-white">{Math.round(it.main.temp_max)}°/{Math.round(it.main.temp_min)}°</Text>
+                  <LabelLight>{Math.round(it.main.temp_max)}°/{Math.round(it.main.temp_min)}°</LabelLight>
                 </View>
-              </View>
+              </DayRow>
             );
           })}
-        </View>
+        </Section>
 
-        <View className="mt-6">
-          <Text className="text-secondary mb-2">Cidade</Text>
-          <TextInput value={city} onChangeText={setCity} placeholder="Digite o nome da cidade" placeholderTextColor="#2E2E2E55" className="border border-secondary/30 rounded-xl px-4 py-3 bg-white text-neutralDark" returnKeyType="search" onSubmitEditing={fetchWeather} />
-          <TouchableOpacity onPress={fetchWeather} disabled={!hasKey} activeOpacity={0.8} className="mt-4 rounded-xl py-3 items-center" style={{ backgroundColor: hasKey ? '#3A8DFF' : '#1B2A41' }}>
-            <Text className="text-white font-medium" style={{ fontWeight: '600' }}>Buscar</Text>
-          </TouchableOpacity>
-        </View>
+        <Section style={{ marginTop: 24 }}>
+          <InputLabel>Cidade</InputLabel>
+          <Input
+            value={city}
+            onChangeText={setCity}
+            placeholder="Digite o nome da cidade"
+            placeholderTextColor="#F5F8FF55"
+            returnKeyType="search"
+            onSubmitEditing={fetchWeather}
+          />
+          <Button onPress={fetchWeather} disabled={!hasKey} activeOpacity={0.8}>
+            <ButtonText>Buscar</ButtonText>
+          </Button>
+        </Section>
 
-        {loading && <Text className="mt-6 text-secondary">Carregando...</Text>}
-        {error && <Text className="mt-6 text-red-600">{error}</Text>}
+        {loading && <LoadingText>Carregando...</LoadingText>}
+        {error && <ErrorText>{error}</ErrorText>}
       </ScrollView>
       <StatusBar style="light" />
-    </View>
+    </Container>
   );
 }
